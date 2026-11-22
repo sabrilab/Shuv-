@@ -35,12 +35,13 @@ const viewer = $('viewer');
 const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
 viewer.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x6a4a3a, 1.4));
-const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(3, 4, 5); scene.add(key);
-const rim = new THREE.DirectionalLight(0xbfd4ff, 1.4); rim.position.set(-4, 2, -4); scene.add(rim);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a7a6c, 1.9));
+const key = new THREE.DirectionalLight(0xfff4ea, 2.0); key.position.set(1.2, 1.6, 2.2); scene.add(key);
+const rim = new THREE.DirectionalLight(0xc8dcff, 1.2); rim.position.set(-1.6, 1.2, -1.8); scene.add(rim);
 
 const camera = new THREE.PerspectiveCamera(26, 1, 0.1, 100);
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -67,7 +68,7 @@ function resize() {
 
 /* ---------- Vignettes : ton modèle rendu avec chaque option ---------- */
 const thumbR = new THREE.WebGLRenderer({ antialias:true, alpha:true, preserveDrawingBuffer:true });
-thumbR.setSize(164, 164, false); thumbR.outputColorSpace = THREE.SRGBColorSpace; thumbR.setClearColor(0xc4dcff, 1);
+thumbR.setSize(164, 164, false); thumbR.outputColorSpace = THREE.SRGBColorSpace; thumbR.setClearColor(0xe4ecf7, 1); thumbR.toneMapping = THREE.ACESFilmicToneMapping; thumbR.toneMappingExposure = 1.05;
 const thumbCam = new THREE.PerspectiveCamera(22, 1, 0.1, 100);
 const SHOTS = {
   face:  { pos:[1.2, 0.3, 6.6], at:[0, -0.05, 0] },

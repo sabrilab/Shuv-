@@ -1,7 +1,7 @@
 :root{--ink:#fff;--muted:#c9cbe8;--accent:#ffcc33;--dark:#14132b;--glass:rgba(20,19,43,.72)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;overflow:hidden}
-body{background:linear-gradient(180deg,#5b8cff 0%,#9fd0ff 55%,#ffe2a8 100%);color:var(--ink);font:600 15px/1.4 Inter,system-ui,sans-serif}
+body{background:linear-gradient(180deg,#dfe7f3 0%,#eef1f6 55%,#f7efe4 100%);color:var(--ink);font:600 15px/1.4 Inter,system-ui,sans-serif}
 button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
 #viewer{position:fixed;inset:0}
 #viewer canvas{display:block;width:100%;height:100%;touch-action:none}

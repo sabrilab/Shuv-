@@ -123,12 +123,12 @@ export async function loadAvatar(url, opts = {}) {
   for (const k in REG) REG[k] = smooth(REG[k], 2);
 
   // ---- matériau des poils : couleur + grain, épaisseur portée par la géométrie
-  const hairCol = new THREE.Color(opts.hairColor ?? 0x15100e);
-  const makeMat = () => { const m = new THREE.MeshStandardMaterial({map: tex, roughness: 0.55, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2});
+  const hairCol = new THREE.Color(opts.hairColor ?? 0x2e2019);
+  const makeMat = () => { const m = new THREE.MeshStandardMaterial({map: tex, roughness: 0.42, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2});
     m.onBeforeCompile = sh => { sh.uniforms.uHair = {value: hairCol};
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aDen; attribute float aShade; varying float vDen; varying float vShade; varying vec3 vP;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvDen = aDen; vShade = aShade; vP = position;');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uHair; varying float vDen; varying float vShade; varying vec3 vP;\nfloat h3(vec3 p){ return fract(sin(dot(floor(p * 3600.0), vec3(12.9898, 78.233, 37.719))) * 43758.5453); }')
-        .replace('#include <map_fragment>', '#include <map_fragment>\n{ float g = h3(vP); float d = clamp(vDen, 0.0, 1.0); float cover = d >= 0.98 ? 1.0 : smoothstep(0.0, 0.6, d) * 0.45 + step(g, d) * 0.45 * smoothstep(0.0, 0.3, d) + smoothstep(0.55, 0.95, d); cover = clamp(cover, 0.0, 1.0);\n  vec3 hc = uHair * (0.75 + 0.5 * vShade) * (0.9 + 0.2 * g); diffuseColor.rgb = mix(diffuseColor.rgb, hc, cover); }');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uHair; varying float vDen; varying float vShade; varying vec3 vP;\nfloat h1(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }\nfloat strand(vec3 p){ vec2 q = vec2(p.x * 520.0, (p.y + p.z) * 38.0); vec2 i = floor(q), f = fract(q); f = f * f * (3.0 - 2.0 * f); return mix(mix(h1(i), h1(i + vec2(1, 0)), f.x), mix(h1(i + vec2(0, 1)), h1(i + vec2(1, 1)), f.x), f.y); }\nfloat h3(vec3 p){ return fract(sin(dot(floor(p * 3600.0), vec3(12.9898, 78.233, 37.719))) * 43758.5453); }')
+        .replace('#include <map_fragment>', '#include <map_fragment>\n{ float g = h3(vP); float d = clamp(vDen, 0.0, 1.0); float cover = d >= 0.98 ? 1.0 : smoothstep(0.0, 0.6, d) * 0.45 + step(g, d) * 0.45 * smoothstep(0.0, 0.3, d) + smoothstep(0.55, 0.95, d); cover = clamp(cover, 0.0, 1.0);\n  float stv = strand(vP) * 0.65 + strand(vP * 2.3) * 0.35; vec3 hc = uHair * (0.7 + 0.5 * vShade) * (0.55 + 0.9 * stv) * (0.92 + 0.16 * g); diffuseColor.rgb = mix(diffuseColor.rgb, hc, cover); }');
     }; return m; };
 
   // Construit une coque à partir des sommets de la tête où weight > 0 : offset = normale * (eps + épaisseur), plus un déplacement libre.
