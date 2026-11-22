@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Sabri Style · essayeur 3D</title>
-<meta name="description" content="Teste coupes de cheveux, barbes et moustaches sur un avatar 3D stylisé.">
+<title>Sabri Style</title>
+<meta name="description" content="Teste coupes, barbes et moustaches sur ton modèle 3D.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <script type="importmap">
 { "imports": {
@@ -16,147 +16,43 @@
 </script>
 </head>
 <body>
+<div id="viewer"></div>
+<div id="loading">Chargement de ton modèle…</div>
+
 <header class="top">
-  <div class="brand"><span class="logo">S</span><div><b>Sabri Style</b><small>essayeur coiffure &amp; barbe</small></div></div>
-  <nav class="tabs" role="tablist">
-    <button class="tab on" data-tab="essayer">Essayer</button>
-    <button class="tab" data-tab="visage">Mon visage</button>
-    <button class="tab" data-tab="favoris">Favoris <span id="favCount" class="pill">0</span></button>
-  </nav>
+  <b class="brand">Sabri Style</b>
+  <div class="top-actions">
+    <button id="barberBtn" class="icon" title="À dire au barbier">✂️</button>
+    <button id="favBtn" class="icon" title="Garder ce look">♡</button>
+  </div>
 </header>
 
-<main class="layout">
-  <section class="stage">
-    <div id="viewer" aria-label="Avatar 3D"></div>
-    <div class="stage-ui">
-      <div class="badge" id="modelBadge">Avatar stylisé · v0</div>
-      <div class="views">
-        <button data-view="face">Face</button>
-        <button data-view="trois">3/4</button>
-        <button data-view="profil">Profil</button>
-        <button data-view="dos">Dos</button>
-        <button id="spin" title="Rotation auto">⟳</button>
-      </div>
-    </div>
-    <div class="look-name" id="lookName">Mon look</div>
-  </section>
+<div class="look" id="lookName">Mon look actuel</div>
 
-  <aside class="panel">
-    <div class="pane on" id="pane-essayer">
-      <div class="mode" id="modeSwitch" style="display:none">
-        <button data-mode="perso" class="on">Mon modèle 3D</button>
-        <button data-mode="avatar">Avatar générique</button>
-      </div>
-      <div id="perso-ui" style="display:none">
-        <h2>Looks rapides</h2>
-        <div class="presets" id="pPresets"></div>
-        <h2>Barbe</h2>
-        <div class="chips" id="pBeard"></div>
-        <h2>Moustache</h2>
-        <div class="chips" id="pMust"></div>
-        <h2>Cheveux</h2>
-        <label>Longueur du dessus <output id="o-pHair"></output>
-          <input type="range" id="pHair" min="-1" max="0.8" step="0.05"></label>
-        <label>Côtés</label>
-        <div class="chips" id="pFade"></div>
-        <div class="actions">
-          <button class="primary" id="saveFav2">♥ Garder ce look</button>
-        </div>
-        <div class="barber">
-          <h3>À dire au barbier</h3>
-          <p id="pBarber"></p>
-          <button id="pCopy" class="ghost">Copier</button>
-        </div>
-      </div>
-      <div id="avatar-ui">
-      <h2>Looks rapides</h2>
-      <div class="presets" id="presets"></div>
+<section class="sheet">
+  <nav class="seg" id="seg">
+    <button data-tab="looks" class="on">Looks</button>
+    <button data-tab="beard">Barbe</button>
+    <button data-tab="must">Moustache</button>
+    <button data-tab="hair">Cheveux</button>
+  </nav>
+  <div class="tab on" id="t-looks"><div class="row" id="looks"></div></div>
+  <div class="tab" id="t-beard"><div class="row" id="beard"></div></div>
+  <div class="tab" id="t-must"><div class="row" id="must"></div></div>
+  <div class="tab" id="t-hair">
+    <div class="row" id="hair"></div>
+    <div class="row" id="fade"></div>
+  </div>
+</section>
 
-      <h2>Cheveux</h2>
-      <label>Coiffure
-        <select id="hairStyle">
-          <option value="crew">Crew cut texturé</option>
-          <option value="quiff">Quiff</option>
-          <option value="slick">Slick back</option>
-          <option value="side">Raie sur le côté</option>
-          <option value="middle">Raie au milieu</option>
-          <option value="crop">French crop + frange</option>
-          <option value="curly">Boucles sur le dessus</option>
-          <option value="mullet">Modern mullet</option>
-        </select>
-      </label>
-      <label>Longueur dessus <output id="o-hairLen"></output>
-        <input type="range" id="hairLen" min="0.5" max="12" step="0.5"></label>
-      <label>Côtés (dégradé) <output id="o-sideLen"></output>
-        <input type="range" id="sideLen" min="0" max="4" step="0.5"></label>
-      <label>Texture <output id="o-texture"></output>
-        <input type="range" id="texture" min="0" max="1" step="0.05"></label>
-
-      <h2>Barbe &amp; moustache</h2>
-      <label>Forme de barbe
-        <select id="beardStyle">
-          <option value="none">Rasé</option>
-          <option value="goatee">Bouc</option>
-          <option value="short">Barbe complète</option>
-          <option value="chin">Collier (mâchoire)</option>
-        </select>
-      </label>
-      <label>Longueur barbe <output id="o-beardLen"></output>
-        <input type="range" id="beardLen" min="0" max="30" step="1"></label>
-      <label>Moustache <output id="o-mustLen"></output>
-        <input type="range" id="mustLen" min="0" max="15" step="1"></label>
-      <label>Contour des joues <output id="o-cheekLine"></output>
-        <input type="range" id="cheekLine" min="0" max="1" step="0.05"></label>
-
-      <div class="actions">
-        <button class="primary" id="saveFav">♥ Garder ce look</button>
-        <button id="random">🎲 Surprends-moi</button>
-      </div>
-
-      <div class="barber">
-        <h3>À dire au barbier</h3>
-        <p id="barberText"></p>
-        <button id="copyBarber" class="ghost">Copier</button>
-      </div>
-      </div>
-    </div>
-
-    <div class="pane" id="pane-visage">
-      <h2>Ce que l'app sait de ton visage</h2>
-      <ul class="facts">
-        <li><b>Forme</b> Ovale allongé, tendance rectangulaire : plus long que large.</li>
-        <li><b>Mâchoire</b> Nette et anguleuse, pommettes marquées : c'est ton atout.</li>
-        <li><b>Nez</b> Droit et long.</li>
-        <li><b>Sourcils</b> Épais, bien dessinés.</li>
-        <li><b>Cheveux</b> Brun très foncé, ondulés à bouclés (2C–3A), densité moyenne à forte.</li>
-        <li><b>Pilosité</b> Barbe dense et foncée, pousse régulière sur les joues.</li>
-      </ul>
-      <h2>Ce qui te va</h2>
-      <ul class="tips">
-        <li>Éviter trop de hauteur sur le dessus : ça allonge encore le visage.</li>
-        <li>Côtés propres (low taper) : la mâchoire ressort.</li>
-        <li>Barbe courte complète 3–10 mm : elle élargit le bas du visage et équilibre. Le bouc seul l'allonge.</li>
-        <li>Tes derniers coups de cœur : cheveux très courts (2–4 cm) + barbe ~1 cm.</li>
-      </ul>
-      <h2>Routine boucles</h2>
-      <ol class="tips">
-        <li>Shampoing doux sans sulfates 2–3 fois par semaine, après-shampoing à chaque lavage.</li>
-        <li>Crème boucles + un peu de gel sur cheveux trempés, froisser, ne plus toucher.</li>
-        <li>Jamais de brosse à sec.</li>
-      </ol>
-      <div class="next">
-        <h3>Bientôt</h3>
-        <p>Plus de coupes sur ton modèle (raies, quiff, boucles), puis l'app pour tout le monde, chacun avec sa propre tête.</p>
-      </div>
-    </div>
-
-    <div class="pane" id="pane-favoris">
-      <h2>Mes looks gardés</h2>
-      <p class="muted" id="favEmpty">Aucun look gardé pour l'instant. Règle l'avatar puis appuie sur « Garder ce look ».</p>
-      <div class="favs" id="favs"></div>
-    </div>
-  </aside>
-</main>
+<dialog id="barber">
+  <h3>À dire au barbier</h3>
+  <p id="barberText"></p>
+  <div class="dlg-actions">
+    <button id="copyBarber" class="primary">Copier</button>
+    <button id="closeBarber">Fermer</button>
+  </div>
+</dialog>
 
 <script type="module" src="app.js"></script>
 </body>
