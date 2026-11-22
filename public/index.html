@@ -45,12 +45,28 @@
     <div class="pane on" id="pane-essayer">
       <div class="mode" id="modeSwitch" style="display:none">
         <button data-mode="perso" class="on">Mon modèle 3D</button>
-        <button data-mode="avatar">Avatar réglable</button>
+        <button data-mode="avatar">Avatar générique</button>
       </div>
       <div id="perso-ui" style="display:none">
-        <h2>Mes variantes</h2>
-        <div class="presets" id="variants"></div>
-        <p class="muted" style="margin-top:14px">Les filtres barbe, moustache et longueur de cheveux sur ce modèle arrivent juste après. En attendant, l'onglet « Avatar réglable » permet de jouer avec les réglages.</p>
+        <h2>Looks rapides</h2>
+        <div class="presets" id="pPresets"></div>
+        <h2>Barbe</h2>
+        <div class="chips" id="pBeard"></div>
+        <h2>Moustache</h2>
+        <div class="chips" id="pMust"></div>
+        <h2>Cheveux</h2>
+        <label>Longueur du dessus <output id="o-pHair"></output>
+          <input type="range" id="pHair" min="-1" max="0.8" step="0.05"></label>
+        <label>Côtés</label>
+        <div class="chips" id="pFade"></div>
+        <div class="actions">
+          <button class="primary" id="saveFav2">♥ Garder ce look</button>
+        </div>
+        <div class="barber">
+          <h3>À dire au barbier</h3>
+          <p id="pBarber"></p>
+          <button id="pCopy" class="ghost">Copier</button>
+        </div>
       </div>
       <div id="avatar-ui">
       <h2>Looks rapides</h2>
@@ -130,7 +146,7 @@
       </ol>
       <div class="next">
         <h3>Bientôt</h3>
-        <p>Ton modèle 3D sculpté sur tes vrais traits remplacera cet avatar. Ensuite : l'app pour tout le monde, chacun avec sa propre tête.</p>
+        <p>Plus de coupes sur ton modèle (raies, quiff, boucles), puis l'app pour tout le monde, chacun avec sa propre tête.</p>
       </div>
     </div>
 

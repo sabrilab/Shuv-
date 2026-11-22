@@ -308,7 +308,7 @@ function syncUI() {
   }
   const preset = PRESETS.find((p) => KEYS.every((k) => p.p[k] == state[k]));
   document.querySelectorAll('.presets button').forEach((b, i) => b.classList.toggle('on', PRESETS[i] === preset));
-  $('lookName').textContent = preset ? preset.name : `${STYLE_NAMES[state.hairStyle]} · ${BEARD_NAMES[state.beardStyle]}`;
+  if (!personal.visible) $('lookName').textContent = preset ? preset.name : `${STYLE_NAMES[state.hairStyle]} · ${BEARD_NAMES[state.beardStyle]}`;
   $('barberText').textContent = barberText();
 }
 
@@ -383,7 +383,7 @@ function renderFavs() {
     const el = document.createElement('div'); el.className = 'fav';
     el.innerHTML = `<img alt=""><span></span><button class="del" title="Supprimer">✕</button>`;
     el.querySelector('img').src = f.img; el.querySelector('span').textContent = f.name;
-    el.onclick = () => { state = { ...f.p }; apply(); showTab('essayer'); };
+    el.onclick = () => { if (f.pp && pHead) { pState = { ...f.pp }; setMode('perso'); applyP(); } else { state = { ...f.p }; if (pHead) setMode('avatar'); apply(); } showTab('essayer'); };
     el.querySelector('.del').onclick = (e) => { e.stopPropagation(); favs.splice(i, 1); saveFavs(); renderFavs(); };
     box.appendChild(el);
   });
@@ -393,9 +393,10 @@ $('saveFav').onclick = () => {
   const src = renderer.domElement, c = document.createElement('canvas'); c.width = c.height = 240;
   const s = Math.min(src.width, src.height) * 0.8;
   c.getContext('2d').drawImage(src, (src.width - s) / 2, (src.height - s) / 2 - s * 0.08, s, s, 0, 0, 240, 240);
-  favs.unshift({ name: $('lookName').textContent, p: { ...state }, img: c.toDataURL('image/jpeg', 0.8) });
+  favs.unshift({ name: $('lookName').textContent, p: { ...state }, pp: personal.visible ? { ...pState } : null, img: c.toDataURL('image/jpeg', 0.8) });
   favs = favs.slice(0, 24); saveFavs(); renderFavs(); toast('Look gardé ♥');
 };
+$('saveFav2').onclick = () => $('saveFav').onclick();
 
 /* ---------- Onglets, vues ---------- */
 function showTab(t) {
@@ -435,29 +436,51 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
-/* ---------- Modèle 3D personnel ----------
-   models/manifest.json : { "variants": [ { "id": "base", "label": "Mon look actuel", "file": "sabri-head.glb" }, ... ] }
-   À défaut, models/sabri-head.glb seul. Le modèle est recentré et mis à l'échelle automatiquement. */
+/* ---------- Modèle 3D personnel (fait depuis les photos de Sabri) + filtres ---------- */
 const personal = new THREE.Group(); personal.visible = false; scene.add(personal);
-const glbCache = {};
-let variants = [];
-async function loadVariant(v) {
-  const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
-  if (!glbCache[v.file]) {
-    const gltf = await new GLTFLoader().loadAsync('models/' + v.file);
-    const root = gltf.scene;
-    if (!v.raw) {
-    const box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
-    const k = (v.height || 4.6) / size.y;
-    root.scale.setScalar(k);
-    root.position.set(-c.x * k, -c.y * k + (v.yOffset ?? -0.6), -c.z * k);
-    }
-    if (v.rotateY) root.rotation.y = v.rotateY;
-    glbCache[v.file] = root;
-  }
-  personal.clear(); personal.add(glbCache[v.file]);
-  document.querySelectorAll('#variants button').forEach((b) => b.classList.toggle('on', b.dataset.id === v.id));
-  $('lookName').textContent = v.label;
+let pHead = null, pState = { beard:'bouc', must:'fine', hair:0, fade:0.55 };
+try { const s = JSON.parse(localStorage.getItem('ss-pstate')); if (s) pState = { ...pState, ...s }; } catch {}
+let pBEARDS = {}, pMUSTS = {};
+const FADES = [{ v:0, label:'Naturel' }, { v:0.55, label:'Dégradé' }, { v:0.95, label:'Très court' }];
+const P_PRESETS = [
+  { name:'Mon look actuel', tag:'Comme sur tes photos', p:{ beard:'bouc', must:'fine', hair:0, fade:0 } },
+  { name:'Très court + barbe courte', tag:'Ton favori', p:{ beard:'courte', must:'fine', hair:-0.7, fade:0.55 } },
+  { name:'Court propre, rasé', tag:'Net', p:{ beard:'rasee', must:'sans', hair:-0.5, fade:0.95 } },
+  { name:'3 jours + dégradé', tag:'Décontracté', p:{ beard:'troisj', must:'sans', hair:-0.3, fade:0.55 } },
+  { name:'Barbe longue', tag:'Audacieux', p:{ beard:'longue', must:'pleine', hair:0, fade:0.55 } },
+  { name:'Cheveux longs + bouc', tag:'Volume', p:{ beard:'bouc', must:'fine', hair:0.7, fade:0 } },
+];
+function chips(boxId, items, key) {
+  const box = $(boxId); box.innerHTML = '';
+  items.forEach(([v, label]) => {
+    const b = document.createElement('button'); b.textContent = label; b.dataset.v = v;
+    b.onclick = () => { pState[key] = typeof pState[key] === 'number' ? +v : v; applyP(); };
+    box.appendChild(b);
+  });
+}
+let pRaf = false;
+function applyP() {
+  if (!pHead) return;
+  if (!pRaf) { pRaf = true; requestAnimationFrame(() => { pRaf = false; pHead.apply({ ...pBEARDS[pState.beard], ...pMUSTS[pState.must], hair: pState.hair, fade: pState.fade }); }); }
+  syncP();
+  try { localStorage.setItem('ss-pstate', JSON.stringify(pState)); } catch {}
+}
+function syncP() {
+  for (const [id, key] of [['pBeard', 'beard'], ['pMust', 'must'], ['pFade', 'fade']])
+    $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(pState[key]) === b.dataset.v));
+  $('pHair').value = pState.hair;
+  $('o-pHair').textContent = pState.hair < -0.6 ? 'très court' : pState.hair < -0.2 ? 'court' : pState.hair < 0.2 ? 'actuel' : pState.hair < 0.55 ? 'mi-long' : 'long';
+  const pre = P_PRESETS.find((x) => Object.keys(x.p).every((k) => x.p[k] == pState[k]));
+  document.querySelectorAll('#pPresets button').forEach((b, i) => b.classList.toggle('on', P_PRESETS[i] === pre));
+  if (personal.visible) $('lookName').textContent = pre ? pre.name : `${pBEARDS[pState.beard]?.label || ''} · ${FADES.find((f) => f.v == pState.fade)?.label || ''}`;
+  $('pBarber').textContent = barberP();
+}
+function barberP() {
+  const h = pState.hair < -0.6 ? 'dessus très court, 2 à 3 cm' : pState.hair < -0.2 ? 'dessus court, 3 à 5 cm' : pState.hair < 0.2 ? 'dessus gardé à la longueur actuelle, juste désépaissi' : pState.hair < 0.55 ? 'dessus mi-long, 7 à 9 cm' : 'dessus long, plus de 10 cm';
+  const f = pState.fade >= 0.9 ? 'côtés très courts (skin fade)' : pState.fade >= 0.5 ? 'low taper aux tempes et à la nuque' : 'côtés naturels, juste égalisés';
+  const b = { rasee:'Barbe rasée', troisj:'Barbe de 3 jours égalisée', bouc:'Bouc gardé, contour net', courte:'Barbe courte complète vers 5–10 mm, contour des joues net', longue:'Barbe longue et fournie, bas arrondi' }[pState.beard];
+  const m = { sans:', sans moustache.', fine:', moustache fine dégagée des lèvres.', pleine:', moustache épaisse.' }[pState.must];
+  return `Je voudrais ${h}, ${f}. ${b}${m}`;
 }
 function setMode(m) {
   const mine = m === 'perso';
@@ -465,28 +488,28 @@ function setMode(m) {
   document.querySelectorAll('#modeSwitch button').forEach((b) => b.classList.toggle('on', b.dataset.mode === m));
   $('perso-ui').style.display = mine ? '' : 'none';
   $('avatar-ui').style.display = mine ? 'none' : '';
-  $('modelBadge').textContent = mine ? 'Mon modèle 3D' : 'Avatar réglable';
-  if (!mine) syncUI();
-  else { const on = variants.find((v) => document.querySelector(`#variants button.on[data-id="${v.id}"]`)) || variants[0]; if (on) $('lookName').textContent = on.label; }
+  $('modelBadge').textContent = mine ? 'Mon modèle 3D' : 'Avatar générique';
+  mine ? syncP() : syncUI();
 }
 async function tryPersonalModel() {
   try {
-    let r = await fetch('models/manifest.json');
-    if (r.ok) variants = (await r.json()).variants || [];
-    else if ((await fetch('models/sabri-head.glb', { method: 'HEAD' })).ok) variants = [{ id: 'base', label: 'Mon modèle', file: 'sabri-head.glb' }];
-    if (!variants.length) return;
-    const box = $('variants'); box.innerHTML = '';
-    variants.forEach((v) => {
-      const b = document.createElement('button'); b.dataset.id = v.id;
-      b.innerHTML = `${v.label}<small>${v.tag || ''}</small>`;
-      b.onclick = () => loadVariant(v).catch(() => toast('Chargement impossible'));
-      box.appendChild(b);
-    });
+    $('modelBadge').textContent = 'Chargement de ton modèle…';
+    const mod = await import('./avatar.js');
+    pBEARDS = mod.BEARDS; pMUSTS = mod.MUSTS;
+    chips('pBeard', Object.entries(pBEARDS).map(([k, v]) => [k, v.label]), 'beard');
+    chips('pMust', Object.entries(pMUSTS).map(([k, v]) => [k, v.label]), 'must');
+    chips('pFade', FADES.map((f) => [f.v, f.label]), 'fade');
+    const pre = $('pPresets'); pre.innerHTML = '';
+    P_PRESETS.forEach((x) => { const b = document.createElement('button'); b.innerHTML = `${x.name}<small>${x.tag}</small>`; b.onclick = () => { pState = { ...x.p }; applyP(); }; pre.appendChild(b); });
+    $('pHair').addEventListener('input', (e) => { pState.hair = +e.target.value; applyP(); });
+    $('pCopy').onclick = async () => { try { await navigator.clipboard.writeText($('pBarber').textContent); toast('Copié'); } catch { toast('Copie impossible'); } };
+    pHead = await mod.loadAvatar('models/sabri-head-source.glb');
+    pHead.scale.setScalar(3.1); pHead.position.y = -0.31;
+    personal.add(pHead);
     $('modeSwitch').style.display = '';
     document.querySelectorAll('#modeSwitch button').forEach((b) => (b.onclick = () => setMode(b.dataset.mode)));
-    await loadVariant(variants[0]);
-    setMode('perso');
-  } catch (e) { console.warn('modèle perso', e); }
+    setMode('perso'); applyP();
+  } catch (e) { console.warn('modèle perso', e); $('modelBadge').textContent = 'Avatar générique'; }
 }
 
 renderFavs();
