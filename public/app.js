@@ -435,18 +435,58 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
-/* ---------- Emplacement du modèle 3D personnel ----------
-   Quand public/models/sabri-head.glb existe, il remplace l'avatar générique. */
+/* ---------- Modèle 3D personnel ----------
+   models/manifest.json : { "variants": [ { "id": "base", "label": "Mon look actuel", "file": "sabri-head.glb" }, ... ] }
+   À défaut, models/sabri-head.glb seul. Le modèle est recentré et mis à l'échelle automatiquement. */
+const personal = new THREE.Group(); personal.visible = false; scene.add(personal);
+const glbCache = {};
+let variants = [];
+async function loadVariant(v) {
+  const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+  if (!glbCache[v.file]) {
+    const gltf = await new GLTFLoader().loadAsync('models/' + v.file);
+    const root = gltf.scene;
+    if (!v.raw) {
+    const box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+    const k = (v.height || 4.6) / size.y;
+    root.scale.setScalar(k);
+    root.position.set(-c.x * k, -c.y * k + (v.yOffset ?? -0.6), -c.z * k);
+    }
+    if (v.rotateY) root.rotation.y = v.rotateY;
+    glbCache[v.file] = root;
+  }
+  personal.clear(); personal.add(glbCache[v.file]);
+  document.querySelectorAll('#variants button').forEach((b) => b.classList.toggle('on', b.dataset.id === v.id));
+  $('lookName').textContent = v.label;
+}
+function setMode(m) {
+  const mine = m === 'perso';
+  personal.visible = mine; avatar.visible = !mine;
+  document.querySelectorAll('#modeSwitch button').forEach((b) => b.classList.toggle('on', b.dataset.mode === m));
+  $('perso-ui').style.display = mine ? '' : 'none';
+  $('avatar-ui').style.display = mine ? 'none' : '';
+  $('modelBadge').textContent = mine ? 'Mon modèle 3D' : 'Avatar réglable';
+  if (!mine) syncUI();
+  else { const on = variants.find((v) => document.querySelector(`#variants button.on[data-id="${v.id}"]`)) || variants[0]; if (on) $('lookName').textContent = on.label; }
+}
 async function tryPersonalModel() {
   try {
-    const r = await fetch('models/sabri-head.glb', { method: 'HEAD' });
-    if (!r.ok) return;
-    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
-    const gltf = await new GLTFLoader().loadAsync('models/sabri-head.glb');
-    head.visible = false; face.visible = false;
-    avatar.add(gltf.scene);
-    $('modelBadge').textContent = 'Modèle perso';
-  } catch {}
+    let r = await fetch('models/manifest.json');
+    if (r.ok) variants = (await r.json()).variants || [];
+    else if ((await fetch('models/sabri-head.glb', { method: 'HEAD' })).ok) variants = [{ id: 'base', label: 'Mon modèle', file: 'sabri-head.glb' }];
+    if (!variants.length) return;
+    const box = $('variants'); box.innerHTML = '';
+    variants.forEach((v) => {
+      const b = document.createElement('button'); b.dataset.id = v.id;
+      b.innerHTML = `${v.label}<small>${v.tag || ''}</small>`;
+      b.onclick = () => loadVariant(v).catch(() => toast('Chargement impossible'));
+      box.appendChild(b);
+    });
+    $('modeSwitch').style.display = '';
+    document.querySelectorAll('#modeSwitch button').forEach((b) => (b.onclick = () => setMode(b.dataset.mode)));
+    await loadVariant(variants[0]);
+    setMode('perso');
+  } catch (e) { console.warn('modèle perso', e); }
 }
 
 renderFavs();
