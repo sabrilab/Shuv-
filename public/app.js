@@ -1,34 +1,33 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { loadAvatar, BEARDS, MUSTS } from './avatar.js';
+import { loadAvatar, CUTS, BEARDS, MUSTS, FADES } from './sabri3d.js';
 
 const $ = (id) => document.getElementById(id);
 
-/* ---------- Options ---------- */
-const HAIRS = { tc:{ label:'Très court', v:-0.8 }, c:{ label:'Court', v:-0.4 }, a:{ label:'Actuel', v:0 }, l:{ label:'Long', v:0.6 } };
-const FADES = { n:{ label:'Côtés naturels', v:0 }, d:{ label:'Dégradé', v:0.55 }, r:{ label:'Côtés rasés', v:0.95 } };
+/* ---------- Options (toutes viennent du module 3D) ---------- */
 const LOOKS = {
-  actuel: { label:'Actuel', s:{ beard:'bouc', must:'fine', hair:'a', fade:'n' } },
-  fav:    { label:'Court + barbe', s:{ beard:'courte', must:'fine', hair:'tc', fade:'d' } },
-  net:    { label:'Rasé net', s:{ beard:'rasee', must:'sans', hair:'c', fade:'r' } },
-  troisj: { label:'3 jours', s:{ beard:'troisj', must:'sans', hair:'c', fade:'d' } },
-  barbu:  { label:'Barbu', s:{ beard:'longue', must:'pleine', hair:'a', fade:'d' } },
-  long:   { label:'Long', s:{ beard:'bouc', must:'fine', hair:'l', fade:'n' } },
+  actuel: { label:'Actuel', s:{ beard:'actuelle', must:'fine', hair:'slick', fade:'aucun' } },
+  fav:    { label:'Court + barbe', s:{ beard:'courte', must:'fine', hair:'court', fade:'bas' } },
+  quiff:  { label:'Quiff', s:{ beard:'degradee', must:'fine', hair:'quiff', fade:'bas' } },
+  crop:   { label:'French crop', s:{ beard:'ancre', must:'fine', hair:'frange', fade:'haut' } },
+  net:    { label:'Rasé net', s:{ beard:'rasee', must:'sans', hair:'tondeuse', fade:'haut' } },
+  barbu:  { label:'Barbu', s:{ beard:'moyenne', must:'chevron', hair:'raie', fade:'bas' } },
+  long:   { label:'Mi-long', s:{ beard:'troisj', must:'ombre', hair:'milong', fade:'aucun' } },
 };
 const GROUPS = {
   looks: { el:'looks', items:LOOKS, key:null, cam:'face' },
   beard: { el:'beard', items:BEARDS, key:'beard', cam:'chin' },
   must:  { el:'must', items:MUSTS, key:'must', cam:'mouth' },
-  hair:  { el:'hair', items:HAIRS, key:'hair', cam:'head' },
+  hair:  { el:'hair', items:CUTS, key:'hair', cam:'head' },
   fade:  { el:'fade', items:FADES, key:'fade', cam:'side' },
 };
 
 let state = { ...LOOKS.actuel.s };
-try { const s = JSON.parse(localStorage.getItem('ss-look')); if (s && BEARDS[s.beard] && MUSTS[s.must] && HAIRS[s.hair] && FADES[s.fade]) state = s; } catch {}
+try { const s = JSON.parse(localStorage.getItem('ss-look3')); if (s && BEARDS[s.beard] && MUSTS[s.must] && CUTS[s.hair] && FADES[s.fade]) state = s; } catch {}
 let favs = [];
-try { favs = JSON.parse(localStorage.getItem('ss-favs2')) || []; } catch {}
+try { favs = JSON.parse(localStorage.getItem('ss-favs3')) || []; } catch {}
 
-const params = (s) => ({ ...BEARDS[s.beard], ...MUSTS[s.must], hair: HAIRS[s.hair].v, fade: FADES[s.fade].v });
+const params = (s) => ({ hair: s.hair, beard: s.beard, must: s.must, fade: FADES[s.fade].v });
 const same = (a, b) => ['beard', 'must', 'hair', 'fade'].every((k) => a[k] === b[k]);
 
 /* ---------- Scène ---------- */
@@ -95,6 +94,7 @@ function buildGroup(g) {
     b.innerHTML = '<img alt=""><span></span>';
     b.querySelector('img').src = shot(G.cam);
     b.querySelector('span').textContent = it.label;
+    if (it.conseil) b.classList.add('tip');
     b.onclick = () => { state = G.key ? { ...state, [G.key]: id } : { ...it.s }; update(); };
     box.appendChild(b);
   }
@@ -117,7 +117,7 @@ function refreshTab(t) {
 /* ---------- État ---------- */
 function lookLabel() {
   const l = Object.values(LOOKS).find((x) => same(x.s, state));
-  return l ? l.label : `${BEARDS[state.beard].label} · ${HAIRS[state.hair].label}`;
+  return l ? l.label : `${CUTS[state.hair].label} · ${BEARDS[state.beard].label}`;
 }
 function sync() {
   for (const g of Object.keys(GROUPS)) {
@@ -135,7 +135,7 @@ function update() {
   head.apply(params(state));
   for (const g of Object.keys(GROUPS)) if (g !== 'looks') dirty.add(g);
   sync();
-  try { localStorage.setItem('ss-look', JSON.stringify(state)); } catch {}
+  try { localStorage.setItem('ss-look3', JSON.stringify(state)); } catch {}
 }
 
 /* ---------- Onglets, favoris, barbier ---------- */
@@ -152,16 +152,14 @@ $('favBtn').onclick = () => {
   const i = favs.findIndex((f) => same(f.s, state));
   if (i >= 0) favs.splice(i, 1);
   else { head.apply(params(state)); favs.unshift({ s:{ ...state }, img: shot('face') }); favs = favs.slice(0, 12); toast('Look gardé'); }
-  try { localStorage.setItem('ss-favs2', JSON.stringify(favs)); } catch {}
+  try { localStorage.setItem('ss-favs3', JSON.stringify(favs)); } catch {}
   buildGroup('looks'); sync();
 };
 
 function barberText() {
-  const h = { tc:'Dessus très court, 2–3 cm', c:'Dessus court, 3–5 cm', a:'Dessus gardé à la longueur actuelle, désépaissi', l:'Dessus long, plus de 10 cm' }[state.hair];
-  const f = { n:'côtés naturels', d:'low taper aux tempes et à la nuque', r:'côtés très courts (skin fade)' }[state.fade];
-  const b = { rasee:'Barbe rasée', troisj:'Barbe de 3 jours égalisée', bouc:'Bouc gardé, contour net', courte:'Barbe courte 5–10 mm, contour net', longue:'Barbe longue, bas arrondi' }[state.beard] || BEARDS[state.beard].label;
-  const m = { sans:'sans moustache', fine:'moustache fine dégagée des lèvres', pleine:'moustache épaisse' }[state.must] || MUSTS[state.must].label;
-  return `${h}, ${f}. ${b}, ${m}.`;
+  const h = { chauve:'Crâne rasé', rase:'Tout rasé à la tondeuse, sabot 0', tondeuse:'Tondeuse partout, sabot 1–2', court:'Dessus court, 2–3 cm', frange:'French crop texturé, dessus 3–4 cm, frange courte droite', slick:'Slick back, dessus 6–8 cm coiffé en arrière', quiff:'Quiff, dessus 6–8 cm plus long devant', raie:'Raie sur le côté, dessus 5–7 cm', milong:'Mi-long ondulé, 10 cm et plus' }[state.hair] || CUTS[state.hair].label;
+  const f = { aucun:'côtés naturels', bas:'dégradé bas (low taper)', haut:'dégradé haut (skin fade)' }[state.fade] || FADES[state.fade].label;
+  return `${h}, ${f}. Barbe : ${BEARDS[state.beard].label.toLowerCase()}. Moustache : ${MUSTS[state.must].label.toLowerCase()}.`;
 }
 $('barberBtn').onclick = () => { $('barberText').textContent = barberText(); $('barber').showModal(); };
 $('closeBarber').onclick = () => $('barber').close();
@@ -174,8 +172,8 @@ resize();
 (function loop() { controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
 
 try {
-  head = await loadAvatar('models/sabri-head-source.glb');
-  head.scale.setScalar(3.1); head.position.y = -0.31;
+  head = await loadAvatar('models/sabri-base.glb', { receding: 0.3 });
+  head.scale.setScalar(3.05); head.position.y = -0.37;
   scene.add(head);
   buildGroup('looks');
   update();
